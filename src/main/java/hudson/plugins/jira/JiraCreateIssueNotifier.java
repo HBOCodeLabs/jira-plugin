@@ -130,7 +130,7 @@ public class JiraCreateIssueNotifier extends Notifier {
     public static final DescriptorImpl DESCRIPTOR = new DescriptorImpl();
 
     public BuildStepMonitor getRequiredMonitorService() {
-        return BuildStepMonitor.BUILD;
+        return BuildStepMonitor.NONE;
     }
 
     @Override
