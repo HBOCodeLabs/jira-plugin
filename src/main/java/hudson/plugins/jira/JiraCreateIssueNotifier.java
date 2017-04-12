@@ -144,7 +144,7 @@ public class JiraCreateIssueNotifier extends Notifier {
         Result currentBuildResult = build.getResult();
 
         Result previousBuildResult = null;
-        AbstractBuild<?, ?> previousBuild = build.getPreviousBuild();
+        AbstractBuild<?, ?> previousBuild = build.getPreviousCompletedBuild();
 
         if (previousBuild != null) {
             previousBuildResult = previousBuild.getResult();
