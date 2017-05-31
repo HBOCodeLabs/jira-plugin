@@ -340,7 +340,7 @@ public class JiraCreateIssueNotifier extends Notifier {
                         deleteFile(filename);
                         Issue issue = createJiraIssue(build, filename);
                         LOG.info(String.format("[%s] created.", issue.getKey()));
-                        listener.getLogger().println("Build failed, created JIRA issue " + issue.getKey());
+                        listener.getLogger().println("Build failed, created JIRA issue https://jira.dp.hbo.com/browse/" + issue.getKey());
                     }else {
                         addComment(build, listener, issueId, comment);
                         LOG.info(String.format("[%s] The previous build also failed, comment added.", issueId));
@@ -355,7 +355,7 @@ public class JiraCreateIssueNotifier extends Notifier {
             try {
                 Issue issue = createJiraIssue(build, filename);
                 LOG.info(String.format("[%s] created.", issue.getKey()));
-                listener.getLogger().println("Build failed, created JIRA issue " + issue.getKey());
+                listener.getLogger().println("Build failed, created JIRA issue https://jira.dp.hbo.com/browse/" + issue.getKey());
             } catch (IOException e) {
                 listener.error("Error creating JIRA issue : " + e.getMessage());
                 LOG.warning("Error creating JIRA issue\n" + e.getMessage());
