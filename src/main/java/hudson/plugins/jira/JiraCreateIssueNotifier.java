@@ -322,9 +322,11 @@ public class JiraCreateIssueNotifier extends Notifier {
      */
     private void currentBuildResultFailure(AbstractBuild<?, ?> build, BuildListener listener, Result previousBuildResult,
                                            String filename, EnvVars vars) throws InterruptedException, IOException {                                               
+
         JiraSite site = getSiteForProject(build.getProject());
         if (previousBuildResult == Result.FAILURE) {
-            String comment = String.format("Build is still failing.\nFailed run: %s", getBuildDetailsString(vars));            
+            String comment = String.format("Build is still failing.\nFailed run: %s", getBuildDetailsString(vars));
+            
             //Get the issue-id which was filed when the previous built failed
             String issueId = getIssue(filename);
             if (issueId != null) {
