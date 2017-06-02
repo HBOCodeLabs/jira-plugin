@@ -321,19 +321,16 @@ public class JiraCreateIssueNotifier extends Notifier {
      * It adds comment until the previously created issue is closed.
      */
     private void currentBuildResultFailure(AbstractBuild<?, ?> build, BuildListener listener, Result previousBuildResult,
-                                           String filename, EnvVars vars) throws InterruptedException, IOException {
-                                               
+                                           String filename, EnvVars vars) throws InterruptedException, IOException {                                               
         JiraSite site = getSiteForProject(build.getProject());
         if (previousBuildResult == Result.FAILURE) {
-            String comment = String.format("Build is still failing.\nFailed run: %s", getBuildDetailsString(vars));
-            
+            String comment = String.format("Build is still failing.\nFailed run: %s", getBuildDetailsString(vars));            
             //Get the issue-id which was filed when the previous built failed
             String issueId = getIssue(filename);
             if (issueId != null) {
                 try {
                     //The status of the issue which was filed when the previous build failed
                     Status status = getStatus(build, issueId);
-                    
                     // Issue Closed, need to open new one
                     if  (   status.getName().equalsIgnoreCase(finishedStatuses.Closed.toString()) ||
                             status.getName().equalsIgnoreCase(finishedStatuses.Resolved.toString()) ||
