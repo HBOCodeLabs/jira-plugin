@@ -228,9 +228,11 @@ public class JiraCreateIssueNotifier extends Notifier {
      * @throws IOException
      */
     private void addComment(AbstractBuild<?, ?> build, BuildListener listener, String id, String comment) throws IOException {
+        
         JiraSession session = getJiraSession(build);
+        JiraSite site = getSiteForProject(build.getProject());
         session.addCommentWithoutConstrains(id, comment);
-        listener.getLogger().println(String.format("[%s] Commented issue", id));
+        listener.getLogger().println(String.format("[%s] Commented issue [%s]", id, site.getUrl(id)));
     }
 
     /**
@@ -319,18 +321,18 @@ public class JiraCreateIssueNotifier extends Notifier {
      * It adds comment until the previously created issue is closed.
      */
     private void currentBuildResultFailure(AbstractBuild<?, ?> build, BuildListener listener, Result previousBuildResult,
-                                           String filename, EnvVars vars) throws InterruptedException, IOException {
+                                           String filename, EnvVars vars) throws InterruptedException, IOException {                                               
 
+        JiraSite site = getSiteForProject(build.getProject());
         if (previousBuildResult == Result.FAILURE) {
             String comment = String.format("Build is still failing.\nFailed run: %s", getBuildDetailsString(vars));
-
+            
             //Get the issue-id which was filed when the previous built failed
             String issueId = getIssue(filename);
             if (issueId != null) {
                 try {
                     //The status of the issue which was filed when the previous build failed
                     Status status = getStatus(build, issueId);
-
                     // Issue Closed, need to open new one
                     if  (   status.getName().equalsIgnoreCase(finishedStatuses.Closed.toString()) ||
                             status.getName().equalsIgnoreCase(finishedStatuses.Resolved.toString()) ||
@@ -340,7 +342,7 @@ public class JiraCreateIssueNotifier extends Notifier {
                         deleteFile(filename);
                         Issue issue = createJiraIssue(build, filename);
                         LOG.info(String.format("[%s] created.", issue.getKey()));
-                        listener.getLogger().println("Build failed, created JIRA issue https://jira.dp.hbo.com/browse/" + issue.getKey());
+                        listener.getLogger().println("Build failed, created JIRA issue " + site.getUrl(issue.getKey()));
                     }else {
                         addComment(build, listener, issueId, comment);
                         LOG.info(String.format("[%s] The previous build also failed, comment added.", issueId));
@@ -355,7 +357,7 @@ public class JiraCreateIssueNotifier extends Notifier {
             try {
                 Issue issue = createJiraIssue(build, filename);
                 LOG.info(String.format("[%s] created.", issue.getKey()));
-                listener.getLogger().println("Build failed, created JIRA issue https://jira.dp.hbo.com/browse/" + issue.getKey());
+                listener.getLogger().println("Build failed, created JIRA issue " + site.getUrl(issue.getKey()));
             } catch (IOException e) {
                 listener.error("Error creating JIRA issue : " + e.getMessage());
                 LOG.warning("Error creating JIRA issue\n" + e.getMessage());
