@@ -20,7 +20,7 @@
     <f:entry title="${%Action Id On Success}" field="actionIdOnSuccess">
         <f:number/>
     </f:entry>
-    <f:entry title="${%Always create new Issue}" field="newIssue">
+    <f:entry title="${%Always create new Issue}" field="forceNewIssue">
         <f:checkbox/>
     </f:entry>
 </j:jelly>

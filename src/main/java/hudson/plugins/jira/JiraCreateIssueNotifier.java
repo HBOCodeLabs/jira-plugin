@@ -51,7 +51,7 @@ public class JiraCreateIssueNotifier extends Notifier {
     private Long typeId;
     private Long priorityId;
     private Integer actionIdOnSuccess;
-    private Boolean newIssue;
+    private Boolean forceNewIssue;
     enum finishedStatuses {
         Closed,
         Done,
@@ -60,7 +60,7 @@ public class JiraCreateIssueNotifier extends Notifier {
 
     @DataBoundConstructor
      public JiraCreateIssueNotifier(String projectKey, String testDescription, String assignee, String component, Long typeId,
-                                   Long priorityId, Integer actionIdOnSuccess, Boolean newIssue) {
+                                   Long priorityId, Integer actionIdOnSuccess, Boolean forceNewIssue) {
         if (projectKey == null) throw new IllegalArgumentException("Project key cannot be null");
         this.projectKey = projectKey;
 
@@ -70,7 +70,7 @@ public class JiraCreateIssueNotifier extends Notifier {
         this.typeId = typeId;
         this.priorityId = priorityId;
         this.actionIdOnSuccess = actionIdOnSuccess;
-        this.newIssue = newIssue;
+        this.forceNewIssue = forceNewIssue;
         }
 
     @Deprecated
@@ -127,8 +127,8 @@ public class JiraCreateIssueNotifier extends Notifier {
         return actionIdOnSuccess;
     }
     
-    public Boolean getNewIssue() {
-        return newIssue;
+    public Boolean getForceNewIssue() {
+        return forceNewIssue;
     }
 
     @Override
@@ -156,17 +156,22 @@ public class JiraCreateIssueNotifier extends Notifier {
         Result previousBuildResult = null;
         AbstractBuild<?, ?> previousBuild = build.getPreviousCompletedBuild();
 
-        if (previousBuild != null) {
-            previousBuildResult = previousBuild.getResult();
+        if (forceNewIssue) {
+            currentBuildResultFailure(build, listener, null, filename, vars);
         }
-
-        if (currentBuildResult != Result.ABORTED && previousBuild != null) {
-            if (currentBuildResult == Result.FAILURE) {
-                currentBuildResultFailure(build, listener, previousBuildResult, filename, vars);
+        else {
+            if (previousBuild != null) {
+                previousBuildResult = previousBuild.getResult();
             }
 
-            if (currentBuildResult == Result.SUCCESS && !newIssue) {
-                currentBuildResultSuccess(build, listener, previousBuildResult, filename, vars);
+            if (currentBuildResult != Result.ABORTED && previousBuild != null) {
+                if (currentBuildResult == Result.FAILURE) {
+                    currentBuildResultFailure(build, listener, previousBuildResult, filename, vars);
+                }
+
+                if (currentBuildResult == Result.SUCCESS && !forceNewIssue) {
+                    currentBuildResultSuccess(build, listener, previousBuildResult, filename, vars);
+                }
             }
         }
         return true;
@@ -334,7 +339,7 @@ public class JiraCreateIssueNotifier extends Notifier {
                                            String filename, EnvVars vars) throws InterruptedException, IOException {                                               
 
         JiraSite site = getSiteForProject(build.getProject());
-        if (previousBuildResult == Result.FAILURE) {
+        if (previousBuildResult == Result.FAILURE && !forceNewIssue) {
             String comment = String.format("Build is still failing.\nFailed run: %s", getBuildDetailsString(vars));
             
             //Get the issue-id which was filed when the previous built failed
@@ -345,12 +350,9 @@ public class JiraCreateIssueNotifier extends Notifier {
                     // Issue Closed, need to open new one
                     if  (   status.getName().equalsIgnoreCase(finishedStatuses.Closed.toString()) ||
                             status.getName().equalsIgnoreCase(finishedStatuses.Resolved.toString()) ||
-                            status.getName().equalsIgnoreCase(finishedStatuses.Done.toString()) ||
-                            newIssue ) {
+                            status.getName().equalsIgnoreCase(finishedStatuses.Done.toString())) {
 
-                        if(!newIssue) {
-                            listener.getLogger().println("The previous build also failed but the issue is closed");
-                        }
+                        listener.getLogger().println("The previous build also failed but the issue is closed");
                         deleteFile(filename);
                         Issue issue = createJiraIssue(build, filename);
                         LOG.info(String.format("[%s] created.", issue.getKey()));
@@ -365,7 +367,7 @@ public class JiraCreateIssueNotifier extends Notifier {
             }
         }
 
-        if (previousBuildResult == Result.SUCCESS || previousBuildResult == Result.ABORTED) {
+        if (previousBuildResult == Result.SUCCESS || previousBuildResult == Result.ABORTED || forceNewIssue) {
             try {
                 Issue issue = createJiraIssue(build, filename);
                 LOG.info(String.format("[%s] created.", issue.getKey()));
