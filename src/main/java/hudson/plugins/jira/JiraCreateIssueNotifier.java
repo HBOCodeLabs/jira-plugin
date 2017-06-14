@@ -169,7 +169,7 @@ public class JiraCreateIssueNotifier extends Notifier {
                     currentBuildResultFailure(build, listener, previousBuildResult, filename, vars);
                 }
 
-                if (currentBuildResult == Result.SUCCESS && !forceNewIssue) {
+                if (currentBuildResult == Result.SUCCESS) {
                     currentBuildResultSuccess(build, listener, previousBuildResult, filename, vars);
                 }
             }
