@@ -51,7 +51,7 @@ public class JiraCreateIssueNotifier extends Notifier {
     private Long typeId;
     private Long priorityId;
     private Integer actionIdOnSuccess;
-
+    private Boolean forceNewIssue;
     enum finishedStatuses {
         Closed,
         Done,
@@ -59,8 +59,8 @@ public class JiraCreateIssueNotifier extends Notifier {
     }
 
     @DataBoundConstructor
-    public JiraCreateIssueNotifier(String projectKey, String testDescription, String assignee, String component, Long typeId,
-                                   Long priorityId, Integer actionIdOnSuccess) {
+     public JiraCreateIssueNotifier(String projectKey, String testDescription, String assignee, String component, Long typeId,
+                                   Long priorityId, Integer actionIdOnSuccess, Boolean forceNewIssue) {
         if (projectKey == null) throw new IllegalArgumentException("Project key cannot be null");
         this.projectKey = projectKey;
 
@@ -70,11 +70,17 @@ public class JiraCreateIssueNotifier extends Notifier {
         this.typeId = typeId;
         this.priorityId = priorityId;
         this.actionIdOnSuccess = actionIdOnSuccess;
-    }
+        this.forceNewIssue = forceNewIssue;
+        }
 
     @Deprecated
+    public JiraCreateIssueNotifier(String projectKey, String testDescription, String assignee, String component, Long typeId,
+                                   Long priorityId, Integer actionIdOnSuccess) {
+        this(projectKey, testDescription, assignee, component, typeId, priorityId, actionIdOnSuccess, false);
+    }
+    
     public JiraCreateIssueNotifier(String projectKey, String testDescription, String assignee, String component) {
-        this(projectKey, testDescription, assignee, component, null, null, null);
+        this(projectKey, testDescription, assignee, component, null, null, null, false);
     }
 
     public String getProjectKey() {
@@ -120,6 +126,10 @@ public class JiraCreateIssueNotifier extends Notifier {
     public Integer getActionIdOnSuccess() {
         return actionIdOnSuccess;
     }
+    
+    public Boolean getForceNewIssue() {
+        return forceNewIssue;
+    }
 
     @Override
     public BuildStepDescriptor<Publisher> getDescriptor() {
@@ -146,17 +156,22 @@ public class JiraCreateIssueNotifier extends Notifier {
         Result previousBuildResult = null;
         AbstractBuild<?, ?> previousBuild = build.getPreviousCompletedBuild();
 
-        if (previousBuild != null) {
-            previousBuildResult = previousBuild.getResult();
+        if (forceNewIssue && currentBuildResult == Result.FAILURE) {
+            currentBuildResultFailure(build, listener, null, filename, vars);
         }
-
-        if (currentBuildResult != Result.ABORTED && previousBuild != null) {
-            if (currentBuildResult == Result.FAILURE) {
-                currentBuildResultFailure(build, listener, previousBuildResult, filename, vars);
+        else {
+            if (previousBuild != null) {
+                previousBuildResult = previousBuild.getResult();
             }
 
-            if (currentBuildResult == Result.SUCCESS) {
-                currentBuildResultSuccess(build, listener, previousBuildResult, filename, vars);
+            if (currentBuildResult != Result.ABORTED && previousBuild != null) {
+                if (currentBuildResult == Result.FAILURE) {
+                    currentBuildResultFailure(build, listener, previousBuildResult, filename, vars);
+                }
+
+                if (currentBuildResult == Result.SUCCESS) {
+                    currentBuildResultSuccess(build, listener, previousBuildResult, filename, vars);
+                }
             }
         }
         return true;
@@ -215,7 +230,12 @@ public class JiraCreateIssueNotifier extends Notifier {
 
         JiraSession session = getJiraSession(build);
         Issue issue = session.getIssueByKey(id);
-        return issue.getStatus();
+        if( issue != null) {
+            return issue.getStatus();
+        }
+        else {
+            return null;
+        }
     }
 
     /**
@@ -324,19 +344,18 @@ public class JiraCreateIssueNotifier extends Notifier {
                                            String filename, EnvVars vars) throws InterruptedException, IOException {                                               
 
         JiraSite site = getSiteForProject(build.getProject());
-        if (previousBuildResult == Result.FAILURE) {
+        if (previousBuildResult == Result.FAILURE && !forceNewIssue) {
             String comment = String.format("Build is still failing.\nFailed run: %s", getBuildDetailsString(vars));
             
             //Get the issue-id which was filed when the previous built failed
             String issueId = getIssue(filename);
-            if (issueId != null) {
-                try {
-                    //The status of the issue which was filed when the previous build failed
-                    Status status = getStatus(build, issueId);
+            Status status = getStatus(build, issueId);
+            if (issueId != null && status != null) {
+                try {                    
                     // Issue Closed, need to open new one
                     if  (   status.getName().equalsIgnoreCase(finishedStatuses.Closed.toString()) ||
                             status.getName().equalsIgnoreCase(finishedStatuses.Resolved.toString()) ||
-                            status.getName().equalsIgnoreCase(finishedStatuses.Done.toString()) ) {
+                            status.getName().equalsIgnoreCase(finishedStatuses.Done.toString())) {
 
                         listener.getLogger().println("The previous build also failed but the issue is closed");
                         deleteFile(filename);
@@ -353,7 +372,7 @@ public class JiraCreateIssueNotifier extends Notifier {
             }
         }
 
-        if (previousBuildResult == Result.SUCCESS || previousBuildResult == Result.ABORTED) {
+        if (previousBuildResult == Result.SUCCESS || previousBuildResult == Result.ABORTED || forceNewIssue) {
             try {
                 Issue issue = createJiraIssue(build, filename);
                 LOG.info(String.format("[%s] created.", issue.getKey()));
