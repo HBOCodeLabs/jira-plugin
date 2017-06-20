@@ -156,7 +156,7 @@ public class JiraCreateIssueNotifier extends Notifier {
         Result previousBuildResult = null;
         AbstractBuild<?, ?> previousBuild = build.getPreviousCompletedBuild();
 
-        if (forceNewIssue) {
+        if (forceNewIssue && currentBuildResult == Result.FAILURE) {
             currentBuildResultFailure(build, listener, null, filename, vars);
         }
         else {
@@ -230,7 +230,12 @@ public class JiraCreateIssueNotifier extends Notifier {
 
         JiraSession session = getJiraSession(build);
         Issue issue = session.getIssueByKey(id);
-        return issue.getStatus();
+        if( issue != null) {
+            return issue.getStatus();
+        }
+        else {
+            return null;
+        }
     }
 
     /**
