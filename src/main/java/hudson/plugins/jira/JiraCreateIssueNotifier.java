@@ -401,12 +401,11 @@ public class JiraCreateIssueNotifier extends Notifier {
         if (previousBuildResult == Result.FAILURE || previousBuildResult == Result.SUCCESS) {
             String comment = String.format("Previously failing build now is OK.\n Passed run: %s", getBuildDetailsString(vars));
             String issueId = getIssue(filename);
-
+            Status status = getStatus(build, issueId);
             //if issue exists it will check the status and comment or delete the file accordingly
-            if (issueId != null) {
+            if (issueId != null && status != null) {
                 try {
-                    Status status = getStatus(build, issueId);
-
+                   
                     //if issue is in closed status
                     if  (   status.getName().equalsIgnoreCase(finishedStatuses.Closed.toString()) ||
                             status.getName().equalsIgnoreCase(finishedStatuses.Resolved.toString()) ||
