@@ -160,6 +160,10 @@ public class JiraCreateIssueNotifier extends Notifier {
             if (currentBuildResult == Result.FAILURE) {
                 currentBuildResultFailure(build, listener, null, filename, vars);
             }
+            /**
+             * if the currentBuildResult is Result.SUCCESS, short circuit all other logic and return true for perform,
+             * if forceNewIssue was set true ie. reap the key benefit of this feature.
+             */
         }
         else {
             if (previousBuild != null) {
